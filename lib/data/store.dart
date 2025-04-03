@@ -16,10 +16,13 @@ Future<Store<EasyCommerceState>> loadStore() async {
     storage: FlutterStorage(),
     serializer: JsonSerializer(EasyCommerceState.fromJson),
   );
-
+  var state = EasyCommerceState.empty();
+  try {
+    state = await persistor.load() ?? state;
+  } catch (Error) {}
   final store = Store<EasyCommerceState>(
     reducer,
-    initialState: await persistor.load() ?? EasyCommerceState.empty(),
+    initialState: state,
     distinct: true,
     middleware: [persistor.createMiddleware()],
   );

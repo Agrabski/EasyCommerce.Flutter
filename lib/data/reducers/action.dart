@@ -7,11 +7,11 @@ abstract interface class ReducerAction {
 abstract class InventoryAction implements ReducerAction {
   @override
   EasyCommerceState apply(EasyCommerceState state) {
-    final newInventory = apply_inventory(state.inventory);
+    final newInventory = applyInventory(state.inventory);
     return state.copyWith.inventory(newInventory);
   }
 
-  Inventory apply_inventory(Inventory inventory);
+  Inventory applyInventory(Inventory inventory);
 }
 
 final class CreateInventoryItem extends InventoryAction {
@@ -20,7 +20,12 @@ final class CreateInventoryItem extends InventoryAction {
   CreateInventoryItem(this.item);
 
   @override
-  Inventory apply_inventory(Inventory inventory) {
-    return inventory.copyWith.content([...inventory.content, item]);
+  Inventory applyInventory(Inventory inventory) {
+    var newInventory = <String, InventoryItem>{};
+    for (var element in inventory.content.keys) {
+      newInventory[element] = inventory.content[element]!;
+    }
+    newInventory[item.code] = item;
+    return inventory.copyWith.content(newInventory);
   }
 }

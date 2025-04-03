@@ -21,13 +21,13 @@ class EasyCommerceState {
 class Inventory {
   Inventory(this.content);
 
-  factory Inventory.empty() => Inventory([]);
+  factory Inventory.empty() => Inventory({});
 
   factory Inventory.fromJson(dynamic json) => _$InventoryFromJson(json);
 
   dynamic toJson() => _$InventoryToJson(this);
 
-  final List<InventoryItem> content;
+  final Map<String, InventoryItem> content;
 
   String nextId() {
     const chars =
@@ -40,7 +40,7 @@ class Inventory {
 
 @JsonSerializable(explicitToJson: true)
 class InventoryItem {
-  InventoryItem(this.code, this.name);
+  InventoryItem(this.code, this.name, this.imageNames);
 
   factory InventoryItem.fromJson(dynamic json) => _$InventoryItemFromJson(json);
   dynamic toJson() => _$InventoryItemToJson(this);
@@ -48,4 +48,6 @@ class InventoryItem {
   final String code;
 
   final String name;
+
+  final List<String> imageNames;
 }
