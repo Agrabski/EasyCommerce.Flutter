@@ -2,6 +2,9 @@ import 'package:easy_commerce/data/reducers/action.dart';
 import 'package:easy_commerce/data/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:go_router/go_router.dart';
+
+import '../data/images.dart';
 
 class InventoryPage extends StatefulWidget {
   @override
@@ -52,22 +55,30 @@ class _InventoryItemHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return StoreConnector<EasyCommerceState, _InventoryItemHeaderModel>(
         converter: (store) {
-          final item = store.state.inventory.content[itemId];
-          if (item == null) {
-            throw Error();
-          }
-          return _InventoryItemHeaderModel(
-              name: item.name, imageName: item.imageNames.firstOrNull);
-        },
-        builder: (context, model) => Column(
-              children: [Container(), Text(model.name)],
-            ));
+      final item = store.state.inventory.content[itemId];
+      if (item == null) {
+        throw Error();
+      }
+      return _InventoryItemHeaderModel(name: item.name, imageId: item.imageNames.firstOrNull,code: item.code);
+    }, builder: (context, model) {
+      return GestureDetector(
+          child:  Column(
+        children: [
+          StoredImageProvider(imageId: model.imageId),
+          Text(model.name)
+        ],
+      ),
+      onTap: (){
+            context.go('/inventory/item/${model.code}');
+      },);
+    });
   }
 }
 
 class _InventoryItemHeaderModel {
   final String name;
-  final String? imageName;
+  final String? imageId;
+  final String code;
 
-  _InventoryItemHeaderModel({required this.name, required this.imageName});
+  _InventoryItemHeaderModel({required this.name, required this.code, required this.imageId});
 }
