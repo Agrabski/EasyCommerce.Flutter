@@ -39,6 +39,7 @@ class Inventory {
 }
 
 @JsonSerializable(explicitToJson: true)
+@CopyWith()
 class InventoryItem {
   InventoryItem(this.code, this.name, this.imageNames);
 

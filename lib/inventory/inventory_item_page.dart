@@ -2,6 +2,9 @@ import 'package:easy_commerce/data/images.dart';
 import 'package:easy_commerce/data/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../data/reducers/action.dart';
 
 class InventoryItemPage extends StatelessWidget {
   final String itemCode;
@@ -50,11 +53,16 @@ class _InventoryItemEditPageState extends State<_InventoryItemEditPage> {
         title: Text("Inventory item"),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
-            onPressed: _onSave,
-            icon: Icon(Icons.save),
-            tooltip: "Save",
-          ),
+          StoreConnector<EasyCommerceState, void Function(InventoryItem)>(
+              builder: (context, callback) {
+                return IconButton(
+                  onPressed: ()=>_onSave(callback),
+                  icon: Icon(Icons.save),
+                  tooltip: "Save",
+                );
+              },
+              converter: (store) =>
+                  (item) => store.dispatch(UpdateInventoryItem(item))),
           PopupMenuButton(
             itemBuilder: (c) {
               return [];
@@ -65,10 +73,49 @@ class _InventoryItemEditPageState extends State<_InventoryItemEditPage> {
       ),
       body: Form(
           child: Column(
-        children: [],
+        children: [
+          SizedBox(
+            height: 200,
+            child: CarouselView(
+              itemSnapping: true,
+              itemExtent: 150,
+              children: editedItem.imageNames.map((name) {
+                return Padding(
+                    padding: EdgeInsets.all(4),
+                    child: StoredImageProvider(imageId: name));
+              }).toList(),
+            ),
+          ),
+          Row(children: [
+            TextButton.icon(
+              onPressed: () => addPhoto(ImageSource.camera),
+              label: Text("Take a photo"),
+              icon: Icon(Icons.add_a_photo),
+            ),
+            TextButton.icon(
+              onPressed: () => addPhoto(ImageSource.gallery),
+              label: Text("Pick from gallery"),
+              icon: Icon(Icons.image),
+            )
+          ])
+        ],
       )),
     );
   }
 
-  void _onSave() {}
+  void _onSave(void Function(InventoryItem item) callback) {
+    callback(editedItem);
+  }
+
+  Future<void> addPhoto(ImageSource source) async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: source);
+    if (file is XFile) {
+      await store(file.name, await file.readAsBytes());
+      setState(() {
+        editedItem = editedItem.copyWith
+            .imageNames(editedItem.imageNames.followedBy([file.name]).toList());
+      });
+    }
+  }
 }

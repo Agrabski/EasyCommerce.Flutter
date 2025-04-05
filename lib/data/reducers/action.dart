@@ -29,3 +29,19 @@ final class CreateInventoryItem extends InventoryAction {
     return inventory.copyWith.content(newInventory);
   }
 }
+
+final class UpdateInventoryItem extends InventoryAction{
+  final InventoryItem item;
+
+  UpdateInventoryItem(this.item);
+
+  @override
+  Inventory applyInventory(Inventory inventory) {
+    var newInventory = <String, InventoryItem>{};
+    for (var element in inventory.content.keys) {
+      newInventory[element] = inventory.content[element]!;
+    }
+    newInventory[item.code] = item;
+    return inventory.copyWith.content(newInventory);
+  }
+}
