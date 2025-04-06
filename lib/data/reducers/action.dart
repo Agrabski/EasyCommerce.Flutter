@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:easy_commerce/data/state.dart';
 
 abstract interface class ReducerAction {
@@ -12,6 +14,23 @@ abstract class InventoryAction implements ReducerAction {
   }
 
   Inventory applyInventory(Inventory inventory);
+}
+
+final class DeleteInventoryItems extends InventoryAction {
+  final HashSet<String> codes;
+
+  DeleteInventoryItems(this.codes);
+
+  @override
+  Inventory applyInventory(Inventory inventory) {
+    var newInventory = <String, InventoryItem>{};
+    for (var element in inventory.content.keys) {
+      if(!codes.contains(element)) {
+        newInventory[element] = inventory.content[element]!;
+      }
+    }
+    return inventory.copyWith.content(newInventory);
+  }
 }
 
 final class CreateInventoryItem extends InventoryAction {
