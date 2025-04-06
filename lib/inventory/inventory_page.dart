@@ -32,10 +32,15 @@ class _InventoryPageState extends State<InventoryPage> {
         ),
       ),
       floatingActionButton: StoreConnector<EasyCommerceState, VoidCallback>(
-        converter: (store) => (() => store.dispatch(CreateInventoryItem(
-            InventoryItem(store.state.inventory.nextId(), 'test', [])))),
+        converter: (store) => (() {
+          final id = store.state.inventory.nextId();
+          store.dispatch(CreateInventoryItem(
+            InventoryItem(
+                id, 'test', [], '', 0, 0, [])));
+          context.go('/inventory/item/${id}');
+        }),
         builder: (context, callback) =>
-            FloatingActionButton(onPressed: callback),
+            FloatingActionButton(onPressed: callback, child: Icon(Icons.add),),
       ),
     );
   }
@@ -59,18 +64,26 @@ class _InventoryItemHeader extends StatelessWidget {
       if (item == null) {
         throw Error();
       }
-      return _InventoryItemHeaderModel(name: item.name, imageId: item.imageNames.firstOrNull,code: item.code);
+      return _InventoryItemHeaderModel(
+          name: item.name,
+          imageId: item.imageNames.firstOrNull,
+          code: item.code);
     }, builder: (context, model) {
       return GestureDetector(
-          child:  Column(
-        children: [
-          StoredImageProvider(imageId: model.imageId),
-          Text(model.name)
-        ],
-      ),
-      onTap: (){
-            context.go('/inventory/item/${model.code}');
-      },);
+        child: Padding(
+            padding: EdgeInsets.all(4),
+            child: Column(
+              children: [
+                SizedBox(
+                    height: 100,
+                    child: StoredImageProvider(imageId: model.imageId)),
+                Text(model.name)
+              ],
+            )),
+        onTap: () {
+          context.go('/inventory/item/${model.code}');
+        },
+      );
     });
   }
 }
@@ -80,5 +93,6 @@ class _InventoryItemHeaderModel {
   final String? imageId;
   final String code;
 
-  _InventoryItemHeaderModel({required this.name, required this.code, required this.imageId});
+  _InventoryItemHeaderModel(
+      {required this.name, required this.code, required this.imageId});
 }

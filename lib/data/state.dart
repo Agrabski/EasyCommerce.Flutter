@@ -41,7 +41,8 @@ class Inventory {
 @JsonSerializable(explicitToJson: true)
 @CopyWith()
 class InventoryItem {
-  InventoryItem(this.code, this.name, this.imageNames);
+  InventoryItem(this.code, this.name, this.imageNames, this.description,
+      this.quantity, this.priceInPennies, this.tags);
 
   factory InventoryItem.fromJson(dynamic json) => _$InventoryItemFromJson(json);
   dynamic toJson() => _$InventoryItemToJson(this);
@@ -49,6 +50,10 @@ class InventoryItem {
   final String code;
 
   final String name;
+  final String description;
+  final int quantity;
+  final int priceInPennies;
+  final List<String> tags;
 
   final List<String> imageNames;
 }
