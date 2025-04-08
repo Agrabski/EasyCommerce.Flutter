@@ -11,6 +11,8 @@ dependencies {
     // Import the Firebase BoM
 
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
+    implementation("com.google.firebase:firebase-appdistribution-api-ktx:16.0.0-beta15")
+    implementation("com.google.firebase:firebase-appdistribution:16.0.0-beta15")
 
 
     // TODO: Add the dependencies for Firebase products you want to use
