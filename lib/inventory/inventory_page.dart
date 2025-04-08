@@ -4,6 +4,8 @@ import 'package:easy_commerce/data/reducers/action.dart';
 import 'package:easy_commerce/data/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:fuzzy/data/fuzzy_options.dart';
+import 'package:fuzzy/fuzzy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:redux/redux.dart';
 
@@ -18,22 +20,38 @@ class InventoryPage extends StatefulWidget {
 
 class _InventoryPageState extends State<InventoryPage> {
   final HashSet<String> _selectedItems = HashSet();
+  final options = FuzzyOptions(keys: [
+    WeightedKey<InventoryItem>(name: 'Name', getter: (i) => i.name, weight: 1),
+    WeightedKey<InventoryItem>(
+        name: 'Description', getter: (i) => i.description, weight: 0.3),
+    WeightedKey<InventoryItem>(
+        name: 'Tags', getter: (i) => i.tags.join(","), weight: 0.5)
+  ]);
+  String? _query;
+
   @override
   Widget build(BuildContext _) {
     return StoreConnector<EasyCommerceState, Store<EasyCommerceState>>(
         converter: (s) => s,
         builder: (context, store) => Scaffold(
               appBar: AppBar(
-                title: Text('Inventory'),
+                title: _query == null ? Text('Inventory') : _buildSearchBar(),
+                leading: _query == null
+                    ? null
+                    : BackButton(
+                        onPressed: () => setState(() => _query = null)),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
                 actions: _buildActions(context, store),
               ),
               body: StoreConnector<EasyCommerceState, _ViewModel>(
-                converter: (store) =>
-                    _ViewModel(store.state.inventory.content.keys.toList()),
+                converter: (store) => _ViewModel(Fuzzy(
+                    store.state.inventory.content.values.toList(),
+                    options: options)),
                 builder: (builder, model) => GridView.count(
                   crossAxisCount: 3,
-                  children: model.itemIds
+                  children: (_query == null
+                          ? model.fuzzy.list.map((i) => i.code)
+                          : model.fuzzy.search(_query!).map((r) => r.item.code))
                       .map((item) => _InventoryItemHeader(
                             itemId: item,
                             onSelected: (code) => setState(() {
@@ -53,7 +71,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 converter: (store) => (() {
                   final id = store.state.inventory.nextId();
                   store.dispatch(CreateInventoryItem(
-                      InventoryItem(id, 'test', [], '', 0, 0, [])));
+                      InventoryItem(id, '', [], '', 0, 0, [])));
                   context.go('/inventory/item/$id');
                 }),
                 builder: (context, callback) => FloatingActionButton(
@@ -98,6 +116,14 @@ class _InventoryPageState extends State<InventoryPage> {
   List<Widget>? _buildActions(
       BuildContext context, Store<EasyCommerceState> store) {
     if (_selectedItems.isEmpty) {
+      if(_query==null) {
+        return [
+          IconButton(
+              onPressed: () => setState(() => _query = ""),
+              icon: Icon(Icons.search),
+              tooltip: "Search")
+        ];
+      }
       return null;
     }
     return [
@@ -115,12 +141,25 @@ class _InventoryPageState extends State<InventoryPage> {
       )
     ];
   }
+
+  Widget _buildSearchBar() {
+    return TextField(
+      autofocus: true,
+      decoration: InputDecoration(
+        hintText: "Search Data...",
+        border: InputBorder.none,
+        hintStyle: TextStyle(color: Theme.of(context).colorScheme.secondary),
+      ),
+      style: TextStyle(fontSize: 16.0),
+      onChanged: (query) => setState(() => _query = query),
+    );
+  }
 }
 
 class _ViewModel {
-  final List<String> itemIds;
+  final Fuzzy<InventoryItem> fuzzy;
 
-  _ViewModel(this.itemIds);
+  _ViewModel(this.fuzzy);
 }
 
 class _InventoryItemHeader extends StatelessWidget {
@@ -136,6 +175,7 @@ class _InventoryItemHeader extends StatelessWidget {
       required this.selected,
       required this.onDeselected,
       required this.anySelected});
+
   @override
   Widget build(BuildContext context) {
     return StoreConnector<EasyCommerceState, _InventoryItemHeaderModel>(

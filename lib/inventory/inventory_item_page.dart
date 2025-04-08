@@ -2,6 +2,7 @@ import 'package:easy_commerce/data/images.dart';
 import 'package:easy_commerce/data/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:textfield_tags/textfield_tags.dart';
 
@@ -43,6 +44,9 @@ class _InventoryItemEditPageState extends State<_InventoryItemEditPage> {
   late InventoryItem editedItem;
   final _key = GlobalKey<FormState>();
   final _stringTagController = StringTagController();
+  bool _dirty = false;
+  bool _forcePop = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,276 +56,341 @@ class _InventoryItemEditPageState extends State<_InventoryItemEditPage> {
   @override
   Widget build(BuildContext context) {
     final distanceToField = MediaQuery.of(context).size.width;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Inventory item"),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          StoreConnector<EasyCommerceState, void Function(InventoryItem)>(
-              builder: (context, callback) {
-                return IconButton(
-                  onPressed: () => _onSave(callback),
-                  icon: Icon(Icons.save),
-                  tooltip: "Save",
-                );
-              },
-              converter: (store) =>
-                  (item) => store.dispatch(UpdateInventoryItem(item))),
-          PopupMenuButton(
-            itemBuilder: (c) {
-              return [];
-            },
-            icon: Icon(Icons.more_vert),
-          )
-        ],
-      ),
-      body: Form(
-          key: _key,
-          child: Column(
-            children: [
-              SizedBox(
-                height: 200,
-                child: CarouselView(
-                  itemSnapping: true,
-                  itemExtent: 150,
-                  children: editedItem.imageNames.map((name) {
-                    return Padding(
-                        padding: EdgeInsets.all(4),
-                        child: StoredImageProvider(imageId: name));
-                  }).toList(),
-                ),
+    return StoreConnector<EasyCommerceState, void Function(InventoryItem)>(
+        converter: (store) =>
+            (item) => store.dispatch(UpdateInventoryItem(item)),
+        builder: (context, callback) => PopScope(
+            canPop: !_dirty || _forcePop,
+            onPopInvokedWithResult: (_, __) => _onPop(callback),
+            child: Scaffold(
+              resizeToAvoidBottomInset: true,
+              appBar: AppBar(
+                title: Text("Inventory item"),
+                backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+                actions: [
+                  IconButton(
+                    onPressed: () => _onSave(callback),
+                    icon: Icon(Icons.save),
+                    tooltip: "Save",
+                  ),
+                  PopupMenuButton(
+                    itemBuilder: (c) {
+                      return [];
+                    },
+                    icon: Icon(Icons.more_vert),
+                  )
+                ],
               ),
-              Row(children: [
-                TextButton.icon(
-                  onPressed: () => addPhoto(ImageSource.camera),
-                  label: Text("Take a photo"),
-                  icon: Icon(Icons.add_a_photo),
-                ),
-                TextButton.icon(
-                  onPressed: () => addPhoto(ImageSource.gallery),
-                  label: Text("Pick from gallery"),
-                  icon: Icon(Icons.image),
-                )
-              ]),
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: "Name",
-                ),
-                onSaved: (value) {
-                  setState(() {
-                    editedItem = editedItem.copyWith.name(value!);
-                  });
-                },
-                initialValue: editedItem.name,
-                validator: (v) => v == null ? "Name is required" : null,
-              ),
-              TextFormField(
-                scrollPadding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 12 * 4),
-                decoration: InputDecoration(
-                  labelText: "Description",
-                ),
-                onSaved: (value) {
-                  setState(() {
-                    editedItem = editedItem.copyWith.description(value!);
-                  });
-                },
-                initialValue: editedItem.description,
-                validator: (v) => v == null ? "Description is required" : null,
-              ),
-              TextFormField(
-                scrollPadding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 12 * 4),
-                keyboardType: TextInputType.numberWithOptions(
-                    signed: false, decimal: true),
-                decoration: InputDecoration(
-                  labelText: "Price",
-                ),
-                onSaved: (value) {
-                  setState(() {
-                    editedItem = editedItem.copyWith
-                        .priceInPennies((double.parse(value!) * 100).toInt());
-                  });
-                },
-                initialValue: (editedItem.priceInPennies / 100).toString(),
-                validator: (v) => v == null ? "Price is required" : null,
-              ),
-              TextFormField(
-                scrollPadding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 12 * 4),
-                keyboardType: TextInputType.numberWithOptions(
-                    signed: false, decimal: true),
-                decoration: InputDecoration(
-                  labelText: "Quantity",
-                ),
-                onSaved: (value) {
-                  setState(() {
-                    editedItem =
-                        editedItem.copyWith.quantity((int.parse(value!)));
-                  });
-                },
-                initialValue: editedItem.quantity.toString(),
-                validator: (v) => v == null ? "Quantity is required" : null,
-              ),
-              Autocomplete<String>(
-                optionsViewBuilder: (context, onSelected, options) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 10.0, vertical: 4.0),
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Material(
-                        elevation: 4.0,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 200),
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: options.length,
-                            itemBuilder: (BuildContext context, int index) {
-                              final String option = options.elementAt(index);
-                              return TextButton(
-                                onPressed: () {
-                                  onSelected(option);
-                                },
+              body: SingleChildScrollView(
+                  child: Form(
+                    onChanged: ()=>setState(() => _dirty=true),
+                      key: _key,
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 200,
+                            child: CarouselView(
+                              itemSnapping: true,
+                              itemExtent: 150,
+                              children: editedItem.imageNames.map((name) {
+                                return Padding(
+                                    padding: EdgeInsets.all(4),
+                                    child: StoredImageProvider(imageId: name));
+                              }).toList(),
+                            ),
+                          ),
+                          Row(children: [
+                            TextButton.icon(
+                              onPressed: () => addPhoto(ImageSource.camera),
+                              label: Text("Take a photo"),
+                              icon: Icon(Icons.add_a_photo),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => addPhoto(ImageSource.gallery),
+                              label: Text("Pick from gallery"),
+                              icon: Icon(Icons.image),
+                            )
+                          ]),
+                          TextFormField(
+                            decoration: InputDecoration(
+                              labelText: "Name",
+                            ),
+                            onSaved: (value) {
+                              setState(() {
+                                editedItem = editedItem.copyWith.name(value!);
+                              });
+                            },
+                            initialValue: editedItem.name,
+                            validator: (v) {
+                              if (v == null) {
+                                return "Name is required";
+                              }
+                              if (v.isEmpty) {
+                                return "Name should not be empty";
+                              }
+                            },
+                          ),
+                          TextFormField(
+                            scrollPadding: EdgeInsets.only(
+                                bottom:
+                                    MediaQuery.of(context).viewInsets.bottom +
+                                        12 * 4),
+                            decoration: InputDecoration(
+                              labelText: "Description",
+                            ),
+                            onSaved: (value) {
+                              setState(() {
+                                editedItem =
+                                    editedItem.copyWith.description(value!);
+                              });
+                            },
+                            initialValue: editedItem.description,
+                            validator: (v) =>
+                                v == null ? "Description is required" : null,
+                          ),
+                          TextFormField(
+                            scrollPadding: EdgeInsets.only(
+                                bottom:
+                                    MediaQuery.of(context).viewInsets.bottom +
+                                        12 * 4),
+                            keyboardType: TextInputType.numberWithOptions(
+                                signed: false, decimal: true),
+                            decoration: InputDecoration(
+                              labelText: "Price",
+                            ),
+                            onSaved: (value) {
+                              setState(() {
+                                editedItem = editedItem.copyWith.priceInPennies(
+                                    (double.parse(value!) * 100).toInt());
+                              });
+                            },
+                            initialValue:
+                                (editedItem.priceInPennies / 100).toString(),
+                            validator: (v) {
+                              if (v == null) {
+                                return "Price is required";
+                              }
+                              if (double.tryParse(v) == null) {
+                                return "Price must be a valid number";
+                              }
+                            },
+                          ),
+                          TextFormField(
+                            scrollPadding: EdgeInsets.only(
+                                bottom:
+                                    MediaQuery.of(context).viewInsets.bottom +
+                                        12 * 4),
+                            keyboardType: TextInputType.numberWithOptions(
+                                signed: false, decimal: true),
+                            decoration: InputDecoration(
+                              labelText: "Quantity",
+                            ),
+                            onSaved: (value) {
+                              setState(() {
+                                editedItem = editedItem.copyWith
+                                    .quantity((int.parse(value!)));
+                              });
+                            },
+                            initialValue: editedItem.quantity.toString(),
+                            validator: (v) =>
+                                v == null ? "Quantity is required" : null,
+                          ),
+                          Autocomplete<String>(
+                            optionsViewBuilder: (context, onSelected, options) {
+                              return Container(
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 10.0, vertical: 4.0),
                                 child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    '#$option',
-                                    textAlign: TextAlign.left,
-                                    style: const TextStyle(
-                                      color: Color.fromARGB(255, 74, 137, 92),
+                                  alignment: Alignment.topCenter,
+                                  child: Material(
+                                    elevation: 4.0,
+                                    child: ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(maxHeight: 200),
+                                      child: ListView.builder(
+                                        shrinkWrap: true,
+                                        itemCount: options.length,
+                                        itemBuilder:
+                                            (BuildContext context, int index) {
+                                          final String option =
+                                              options.elementAt(index);
+                                          return TextButton(
+                                            onPressed: () {
+                                              onSelected(option);
+                                            },
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                '#$option',
+                                                textAlign: TextAlign.left,
+                                                style: const TextStyle(
+                                                  color: Color.fromARGB(
+                                                      255, 74, 137, 92),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ),
                                 ),
                               );
                             },
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                optionsBuilder: (TextEditingValue textEditingValue) {
-                  if (textEditingValue.text == '') {
-                    return const Iterable<String>.empty();
-                  }
-                  return editedItem.tags.where((String option) {
-                    return option.contains(textEditingValue.text.toLowerCase());
-                  });
-                },
-                onSelected: (String selectedTag) {
-                  _stringTagController.onTagSubmitted(selectedTag);
-                },
-                fieldViewBuilder: (context, textEditingController, focusNode,
-                    onFieldSubmitted) {
-                  return TextFieldTags<String>(
-                    textEditingController: textEditingController,
-                    focusNode: focusNode,
-                    textfieldTagsController: _stringTagController,
-                    initialTags: editedItem.tags,
-                    textSeparators: const [' ', ','],
-                    letterCase: LetterCase.normal,
-                    inputFieldBuilder: (context, inputFieldValues) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                        child: TextField(
-                          controller: inputFieldValues.textEditingController,
-                          focusNode: inputFieldValues.focusNode,
-                          decoration: InputDecoration(
-                            isDense: true,
-                            border: const OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color.fromARGB(255, 74, 137, 92),
-                                width: 3.0,
-                              ),
-                            ),
-                            focusedBorder: const OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color.fromARGB(255, 74, 137, 92),
-                                width: 3.0,
-                              ),
-                            ),
-                            helperText: 'Tags',
-                            helperStyle: const TextStyle(
-                              color: Color.fromARGB(255, 74, 137, 92),
-                            ),
-                            hintText: inputFieldValues.tags.isNotEmpty
-                                ? ''
-                                : "Enter tag...",
-                            errorText: inputFieldValues.error,
-                            prefixIconConstraints:
-                            BoxConstraints(maxWidth: distanceToField * 0.74),
-                            prefixIcon: inputFieldValues.tags.isNotEmpty
-                                ? SingleChildScrollView(
-                              controller:
-                              inputFieldValues.tagScrollController,
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                  children: inputFieldValues.tags
-                                      .map((String tag) {
-                                    return Container(
-                                      decoration: const BoxDecoration(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(20.0),
-                                        ),
-                                        color: Color.fromARGB(255, 74, 137, 92),
-                                      ),
-                                      margin:
-                                      const EdgeInsets.only(right: 10.0),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10.0, vertical: 4.0),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          InkWell(
-                                            child: Text(
-                                              '#$tag',
-                                              style: const TextStyle(
-                                                  color: Colors.white),
-                                            ),
-                                            onTap: () {
-                                              //print("$tag selected");
-                                            },
+                            optionsBuilder:
+                                (TextEditingValue textEditingValue) {
+                              if (textEditingValue.text == '') {
+                                return const Iterable<String>.empty();
+                              }
+                              return editedItem.tags.where((String option) {
+                                return option.contains(
+                                    textEditingValue.text.toLowerCase());
+                              });
+                            },
+                            onSelected: (String selectedTag) {
+                              _stringTagController.onTagSubmitted(selectedTag);
+                            },
+                            fieldViewBuilder: (context, textEditingController,
+                                focusNode, onFieldSubmitted) {
+                              return TextFieldTags<String>(
+                                textEditingController: textEditingController,
+                                focusNode: focusNode,
+                                textfieldTagsController: _stringTagController,
+                                initialTags: editedItem.tags,
+                                textSeparators: const [' ', ','],
+                                letterCase: LetterCase.normal,
+                                inputFieldBuilder: (context, inputFieldValues) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10.0),
+                                    child: TextField(
+                                      controller: inputFieldValues
+                                          .textEditingController,
+                                      focusNode: inputFieldValues.focusNode,
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        border: const OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: Color.fromARGB(
+                                                255, 74, 137, 92),
+                                            width: 3.0,
                                           ),
-                                          const SizedBox(width: 4.0),
-                                          InkWell(
-                                            child: const Icon(
-                                              Icons.cancel,
-                                              size: 14.0,
-                                              color: Color.fromARGB(
-                                                  255, 233, 233, 233),
-                                            ),
-                                            onTap: () {
-                                              inputFieldValues
-                                                  .onTagRemoved(tag);
-                                            },
-                                          )
-                                        ],
+                                        ),
+                                        focusedBorder: const OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: Color.fromARGB(
+                                                255, 74, 137, 92),
+                                            width: 3.0,
+                                          ),
+                                        ),
+                                        helperText: 'Tags',
+                                        helperStyle: const TextStyle(
+                                          color:
+                                              Color.fromARGB(255, 74, 137, 92),
+                                        ),
+                                        hintText:
+                                            inputFieldValues.tags.isNotEmpty
+                                                ? ''
+                                                : "Enter tag...",
+                                        errorText: inputFieldValues.error,
+                                        prefixIconConstraints: BoxConstraints(
+                                            maxWidth: distanceToField * 0.74),
+                                        prefixIcon: inputFieldValues
+                                                .tags.isNotEmpty
+                                            ? SingleChildScrollView(
+                                                controller: inputFieldValues
+                                                    .tagScrollController,
+                                                scrollDirection:
+                                                    Axis.horizontal,
+                                                child: Row(
+                                                    children: inputFieldValues
+                                                        .tags
+                                                        .map((String tag) {
+                                                  return Container(
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                      borderRadius:
+                                                          BorderRadius.all(
+                                                        Radius.circular(20.0),
+                                                      ),
+                                                      color: Color.fromARGB(
+                                                          255, 74, 137, 92),
+                                                    ),
+                                                    margin:
+                                                        const EdgeInsets.only(
+                                                            right: 10.0),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 10.0,
+                                                        vertical: 4.0),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        InkWell(
+                                                          child: Text(
+                                                            '#$tag',
+                                                            style:
+                                                                const TextStyle(
+                                                                    color: Colors
+                                                                        .white),
+                                                          ),
+                                                          onTap: () {
+                                                            //print("$tag selected");
+                                                          },
+                                                        ),
+                                                        const SizedBox(
+                                                            width: 4.0),
+                                                        InkWell(
+                                                          child: const Icon(
+                                                            Icons.cancel,
+                                                            size: 14.0,
+                                                            color:
+                                                                Color.fromARGB(
+                                                                    255,
+                                                                    233,
+                                                                    233,
+                                                                    233),
+                                                          ),
+                                                          onTap: () {
+                                                            setState(() => _dirty=true);
+                                                            inputFieldValues
+                                                                .onTagRemoved(
+                                                                    tag);
+                                                          },
+                                                        )
+                                                      ],
+                                                    ),
+                                                  );
+                                                }).toList()),
+                                              )
+                                            : null,
                                       ),
-                                    );
-                                  }).toList()),
-                            )
-                                : null,
+                                      onChanged: (v) {
+                                        inputFieldValues.onTagChanged(v);
+                                        setState(() => _dirty=true);
+                                      },
+                                      onSubmitted:
+                                          inputFieldValues.onTagSubmitted,
+                                    ),
+                                  );
+                                },
+                              );
+                            },
                           ),
-                          onChanged: inputFieldValues.onTagChanged,
-                          onSubmitted: inputFieldValues.onTagSubmitted,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
-          )),
-    );
+                        ],
+                      ))),
+            )));
   }
 
   void _onSave(void Function(InventoryItem item) callback) {
     if (_key.currentState!.validate()) {
       _key.currentState!.save();
       callback(editedItem.copyWith.tags(_stringTagController.getTags!));
-      const snackBar = SnackBar(content: Row(children: [Icon(Icons.check_circle_rounded), Text('Saved')]));
+      const snackBar = SnackBar(
+          content:
+              Row(children: [Icon(Icons.check_circle_rounded), Text('Saved')]));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -335,6 +404,44 @@ class _InventoryItemEditPageState extends State<_InventoryItemEditPage> {
         editedItem = editedItem.copyWith
             .imageNames(editedItem.imageNames.followedBy([file.name]).toList());
       });
+    }
+  }
+
+  void _onPop(void Function(InventoryItem) callback) async {
+    if (_forcePop) {
+      return;
+    }
+    if (_dirty) {
+      await showDialog<bool>(
+          context: context,
+          builder: (c) {
+            return AlertDialog(
+                title: Text("Discard changes?"),
+                content: Text(
+                    "You have unsaved changes to this inventory item, that will be lost."),
+                actions: [
+                  TextButton(
+                      onPressed: () {
+                        setState(() => _forcePop = true);
+                        GoRouter.of(c).pop();
+                        GoRouter.of(c).pop();
+                      },
+                      child: Text("Discard")),
+                  TextButton(
+                      onPressed: () {
+                        _onSave(callback);
+                        setState(() => _forcePop = true);
+                        GoRouter.of(c).pop();
+                        GoRouter.of(c).pop();
+                      },
+                      child: Text("Save")),
+                  TextButton(
+                      onPressed: () {
+                        GoRouter.of(c).pop();
+                      },
+                      child: Text("Cancel"))
+                ]);
+          });
     }
   }
 }
