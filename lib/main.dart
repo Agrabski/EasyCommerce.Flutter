@@ -2,6 +2,7 @@ import 'package:easy_commerce/dashboard/dashboard_page.dart';
 import 'package:easy_commerce/data/state.dart';
 import 'package:easy_commerce/inventory/inventory_item_page.dart';
 import 'package:easy_commerce/inventory/inventory_page.dart';
+import 'package:easy_commerce/sale/sale_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,7 @@ Future main() async {
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorDashboardKey =
     GlobalKey<NavigatorState>(debugLabel: 'dashboard');
+final _shellNavigatorSaleKey = GlobalKey<NavigatorState>(debugLabel: 'sale');
 final _shellNavigatorInventoryKey =
     GlobalKey<NavigatorState>(debugLabel: 'inventory');
 
@@ -46,7 +48,8 @@ class ScaffoldWithNestedNavigation extends StatelessWidget {
           NavigationDestination(
               label: 'Dashboard', icon: Icon(Icons.dashboard)),
           NavigationDestination(
-              label: 'Inventory', icon: Icon(Icons.inventory),
+            label: 'Inventory',
+            icon: Icon(Icons.inventory),
           ),
           NavigationDestination(label: 'Sale', icon: Icon(Icons.store)),
           NavigationDestination(label: 'Profile', icon: Icon(Icons.person)),
@@ -78,12 +81,27 @@ class MyApp extends StatelessWidget {
                 GoRoute(
                     path: '/inventory',
                     builder: (context, _) => InventoryPage(),
-                  routes: [
-                    GoRoute(path: 'item/:code',
-                    builder: (context, state)=> InventoryItemPage(itemCode: state.pathParameters['code']!))
-                  ]
-                )
-              ])
+                    routes: [
+                      GoRoute(
+                          path: 'item/:code',
+                          builder: (context, state) => InventoryItemPage(
+                              itemCode: state.pathParameters['code']!))
+                    ])
+              ]),
+          StatefulShellBranch(navigatorKey: _shellNavigatorSaleKey, routes: [
+            GoRoute(
+              path: '/sale',
+              redirect: (context, state) => '/sale/${SaleSubPage.Orders}',
+            ),
+            GoRoute(
+                path: '/sale/:subpage',
+                builder: (context, state) {
+                  return SalePage(
+                    subPage: SaleSubPage.values.firstWhere((element) =>
+                        element.toString() == state.pathParameters['subpage']),
+                  );
+                })
+          ])
         ])
   ], initialLocation: '/dashboard');
 
