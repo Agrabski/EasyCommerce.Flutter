@@ -18,6 +18,43 @@ class EasyCommerceState {
 
 @JsonSerializable(explicitToJson: true)
 @CopyWith()
+class Orders {
+  Orders(this.content);
+  factory Orders.empty() => Orders([]);
+
+  factory Orders.fromJson(dynamic json) => _$OrdersFromJson(json);
+
+  dynamic toJson() => _$OrdersToJson(this);
+  final List<Order> content;
+}
+
+@JsonSerializable(explicitToJson: true)
+@CopyWith()
+class Order {
+  Order(this.code, this.items);
+  factory Order.fromJson(dynamic json) => _$OrderFromJson(json);
+
+  dynamic toJson() => _$OrderToJson(this);
+  final String code;
+  final List<OrderItem> items;
+}
+
+
+@JsonSerializable(explicitToJson: true)
+@CopyWith()
+class OrderItem {
+  final String itemCode;
+  final int quantity;
+  final int percentageDiscount;
+  final int absoluteDiscount;
+  OrderItem(this.itemCode, this.quantity, this.percentageDiscount, this.absoluteDiscount);
+  factory OrderItem.fromJson(dynamic json) => _$OrderItemFromJson(json);
+  dynamic toJson() => _$OrderItemToJson(this);
+
+}
+
+@JsonSerializable(explicitToJson: true)
+@CopyWith()
 class Inventory {
   Inventory(this.content);
 
